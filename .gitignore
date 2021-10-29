@@ -1,0 +1,8 @@
+.idea/
+
+**/data
+
+venv/
+
+**/raw_data
+**/catboost_info

@@ -1,0 +1,7 @@
+delta = 1
+U_mean = 1
+Re_tau = 180
+
+Initial number of points is 65 including central point.
+For our RANS simulation we will prepare 129 points including walls.
+So number of cells is 128.
