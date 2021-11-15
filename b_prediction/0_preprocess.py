@@ -4,6 +4,9 @@ from scipy.interpolate import interp1d
 from modules.utils import *
 from config import *
 
+X_test, X_train = [], []
+TB_test, TB_train = [], []
+b_train, b_test = [], []
 
 for i, re_t in enumerate(re_t_list):
     ########################### READING RANS ###################################
@@ -18,6 +21,8 @@ for i, re_t in enumerate(re_t_list):
     fields = {}
     for field_name in field_names:
         fields[field_name] = read_field(field_name, max_step, rans_path + f'/{i+1}_pc_Re_tau_{re_t}/')[mask]
+
+    b_rans = R_to_b(fields['turbulenceProperties:R'])
 
     ########################### READING DNS ###################################
     dns_data = pd.read_csv(f'{dns_path}/{i + 1}_pc_Re_tau_{re_t}/half_channel_data.csv')[dns_columns]
@@ -42,56 +47,41 @@ for i, re_t in enumerate(re_t_list):
     invariants = calc_invariants(S, R)
     tensor_basis = calc_tensor_basis(S, R)
     wbReNum = wbRe(k_intd, new_space, nus[i])
+    re_tau_feature = np.full(wbReNum.shape, re_t)
 
+    # merge features
+    wbReNum = wbReNum.reshape((-1, 1))
+    re_tau_feature = re_tau_feature.reshape((-1, 1))
+    features = np.concatenate((invariants, wbReNum, re_tau_feature), axis=1)
 
+    # save prepared target and features
+    np.save(f'data/{i + 1}_inv.npy', invariants)
+    np.save(f'data/{i + 1}_tb.npy', tensor_basis)
+    np.save(f'data/{i + 1}_b.npy', b_intd)
+    np.save(f'data/{i + 1}_wbRe.npy', wbReNum)
+    np.save(f'data/{i + 1}_re_tau.npy', re_tau_feature)
 
+    # save other data
+    np.save(f'data/{i + 1}_space.npy', new_space)
+    np.save(f'data/{i + 1}_b_RANS.npy', b_rans)
 
+    # prepare train and test data
+    if re_t == test_case:
+        X_test.append(features)
+        TB_test.append(tensor_basis)
+        b_test.append(b_intd)
+    else:
+        X_train.append(features)
+        TB_train.append(tensor_basis)
+        b_train.append(b_intd)
 
+X_test, X_train = np.concatenate(X_test), np.concatenate(X_train)
+TB_test, TB_train = np.concatenate(TB_test), np.concatenate(TB_train)
+b_test, b_train = np.concatenate(b_test), np.concatenate(b_train)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # import matplotlib.pyplot as plt
-    #
-    # b_rans = R_to_b(fields['turbulenceProperties:R'])
-    #
-    # plt.figure(figsize=(10, 7))
-    # plt.plot(dns_cy, b_dns[:, 0, 1], label='DNS', linestyle='dashed', alpha=0.5)
-    # plt.plot(rans_cy, b_rans[:, 0, 1], label='RANS', linestyle='dashed', alpha=0.5)
-    # plt.plot(new_space, b_intd[:, 0, 1], label='interpolated', linestyle='dashed', alpha=0.7)
-    # plt.xscale('log')
-    # plt.legend()
-    # plt.savefig('b.PNG', bbox_inches='tight')
-    #
-    # print(rans_cy)
-
-
-
-
-
-    # print(new_space[])
-    # new_space = np.logspace(rans_cy[0], dns_cell_centers[-1], 1000)
-    # b_intd = b_interpolant(new_space)
-    # grad_U_intd = grad_U_interpolant(new_space)
-    # omega_intd = omega_interpolant(new_space)
-
-
-
-
-    break
+np.save(f'data/X_test.npy', X_test)
+np.save(f'data/X_train.npy', X_train)
+np.save(f'data/TB_test.npy', TB_test)
+np.save(f'data/TB_train.npy', TB_train)
+np.save(f'data/b_test.npy', b_test)
+np.save(f'data/b_train.npy', b_train)
